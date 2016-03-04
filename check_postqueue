@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Autor         : Joao Arquimedes de S. Costa
+#
+# -----------------------------------------------------------------------
+# Este script tem por objetivo coletar e retornar o número de mensagens na
+# fila.
+# -----------------------------------------------------------------------
+
+# Saídas/Retorno para o Nagios
+# OK=0
+# WARNING=1
+# CRITICAL=2
+# UNKNOWN=3
+
+# Binários a serem verificados antes de dar continuidade no restante da execução do script.
+PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
+[ -f "$(which postqueue)" ] || { echo "Program not found: postqueue"; exit 3 ; }
+
+MENSAGEM_USO=" 
+Uso: $(basename "$0") [OPÇÕES]
+   OPTIONS:
+    -c, --critical Critical number
+    -w, --warning  Warning number
+    -h, --help     Help
+" 
+
+unset CRITICAL
+unset WARNING
+
+# Verifica se a variável é um número
+TestNumber() { [[ "$1" =~ ^[0-9]+$ ]] || { echo "Error: Not a number: $1" >&2; exit 3 ; } ; }
+while test -n "$1" 
+do
+    case "$1" in
+        -c | --critical)    shift; TestNumber $1; CRITICAL=$1;;
+        -w | --warning)     shift; TestNumber $1; WARNING=$1;;
+        -h | --help)        echo "$MENSAGEM_USO"; exit 0;;
+        *)                  echo "$MENSAGEM_USO"; exit 1;;
+    esac
+    shift
+done
+
+GET_POSTQUEUE() { postqueue -p | grep "^[A-Z0-9]" | grep -v "Mail queue is empty" | wc -l ; }
+
+CRIT=false
+WARN=false
+
+[ $CRITICAL ] && [[ $(GET_POSTQUEUE) -gt $CRITICAL ]] && CRIT=true
+[ $WARNING ]  && [[ $(GET_POSTQUEUE) -gt $WARNING ]]  && WARN=true
+
+MSG="Queue Messages: $(GET_POSTQUEUE)" 
+MSG_PFDATA="postqueue=$(GET_POSTQUEUE);;;${WARNING};${CRITICAL}" 
+
+Message(){ echo "${MSG};" ; }
+PerformanceData() { echo "${MSG_PFDATA}" ; }
+
+[ $CRIT = "true" ] && { echo "Postqueue Critical - $(Message) | $(PerformanceData)" ; exit 2 ; }
+[ $WARN = "true" ] && { echo "Postqueue Warning - $(Message) | $(PerformanceData)"  ; exit 1 ; }
+echo "Postqueue OK - $(Message) | $(PerformanceData)"  ; exit 0

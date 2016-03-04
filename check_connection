@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+# Autor         : Joao Arquimedes de S. Costa
+#
+# -----------------------------------------------------------------------
+# Este script tem por objetivo coletar e retornar o número de conexões de
+# uma determinada porta.
+# -----------------------------------------------------------------------
+
+# Saídas/Retorno para o Nagios
+# OK=0
+# WARNING=1
+# CRITICAL=2
+# UNKNOWN=3
+
+# Binários a serem verificados antes de dar continuidade no restante da execução do script.
+[ -f "$(which ss)" ] || { echo "Program not found: ss"; exit 3 ; }
+
+MENSAGEM_USO=" 
+Uso: $(basename "$0") [OPÇÕES]
+   OPTIONS:
+    -a, --all      Check all connection
+    -p, --port     Port number
+    -d, --dport    Destinarion port. Default is source port
+    -c, --critical Critical number
+    -w, --warning  Warning number
+    -h, --help     Help
+" 
+
+unset ALLCONNECTION
+unset PORT
+unset DPORT
+unset XPORT
+unset CRITICAL
+unset WARNING
+unset FILTER
+
+# Verifica se a variável é um número
+TestNumber() { [[ "$1" =~ ^[0-9]+$ ]] || { echo "Error: Not a number: $1" >&2; exit 3 ; } ; }
+while test -n "$1" 
+do
+    case "$1" in
+        -a | --all)         ALLCONNECTION=true;;
+        -p | --port)        shift; TestNumber $1; PORT=$1;;
+        -d | --dport)       DPORT=true;;
+        -c | --critical)    shift; TestNumber $1; CRITICAL=$1;;
+        -w | --warning)     shift; TestNumber $1; WARNING=$1;;
+        -h | --help)        echo "$MENSAGEM_USO"; exit 0;;
+        *)                  echo "$MENSAGEM_USO"; exit 1;;
+    esac
+    shift
+done
+
+[ -z "$DPORT" ] && XPORT=sport || XPORT=dport
+[ -n "$PORT" ] && [ -z "$ALLCONNECTION" ] && FILTER="( ${XPORT} = :${PORT} )" 
+
+ESTABLISHED() { ss -n -t -o state established ${FILTER} | grep -v 'State\|-Q' | wc -l ; }
+TIME_WAIT()   { ss -n -t -o state time-wait   ${FILTER} | grep -v 'State\|-Q' | wc -l ; }
+CLOSE_WAIT()  { ss -n -t -o state close-wait  ${FILTER} | grep -v 'State\|-Q' | wc -l ; }
+SYN_SENT()    { ss -n -t -o state syn-sent    ${FILTER} | grep -v 'State\|-Q' | wc -l ; }
+SYN_RECV()    { ss -n -t -o state syn-recv    ${FILTER} | grep -v 'State\|-Q' | wc -l ; }
+
+CRIT=false
+WARN=false
+
+[ $CRITICAL ] && [[ $(ESTABLISHED) -gt $CRITICAL ]] && CRIT=true
+[ $CRITICAL ] && [[ $(TIME_WAIT)   -gt $CRITICAL ]] && CRIT=true
+[ $CRITICAL ] && [[ $(CLOSE_WAIT)  -gt $CRITICAL ]] && CRIT=true
+[ $CRITICAL ] && [[ $(SYN_SENT)    -gt $CRITICAL ]] && CRIT=true
+[ $CRITICAL ] && [[ $(SYN_RECV)    -gt $CRITICAL ]] && CRIT=true
+
+[ $WARNING ] && [[ $(ESTABLISHED) -gt $WARNING ]] && WARN=true
+[ $WARNING ] && [[ $(TIME_WAIT)   -gt $WARNING ]] && WARN=true
+[ $WARNING ] && [[ $(CLOSE_WAIT)  -gt $WARNING ]] && WARN=true
+[ $WARNING ] && [[ $(SYN_SENT)    -gt $WARNING ]] && WARN=true
+[ $WARNING ] && [[ $(SYN_RECV)    -gt $WARNING ]] && WARN=true
+
+MSG_ESTAB="established $(ESTABLISHED)" 
+MSG_TWAIT="time-wait $(TIME_WAIT)" 
+MSG_CWAIT="close-wait $(CLOSE_WAIT)" 
+MSG_SSENT="syn-sent $(SYN_SENT)" 
+MSG_SRECV="syn-recv $(SYN_RECV)" 
+
+MSG_PFDATA_ESTAB="established=$(ESTABLISHED);;;${WARNING};${CRITICAL}" 
+MSG_PFDATA_TWAIT="time-wait=$(TIME_WAIT);;;${WARNING};${CRITICAL}" 
+MSG_PFDATA_CWAIT="close-wait=$(CLOSE_WAIT);;;${WARNING};${CRITICAL}" 
+MSG_PFDATA_SSENT="syn-sent=$(SYN_SENT);;;${WARNING};${CRITICAL}" 
+MSG_PFDATA_SRECV="syn-recv=$(SYN_RECV);;;${WARNING};${CRITICAL}" 
+
+Message(){ echo "${MSG_ESTAB}; ${MSG_TWAIT}; ${MSG_CWAIT}; ${MSG_SSENT}; ${MSG_SRECV};" ; }
+PerformanceData() { echo "${MSG_PFDATA_ESTAB} ${MSG_PFDATA_TWAIT} ${MSG_PFDATA_CWAIT} ${MSG_PFDATA_SSENT} ${MSG_PFDATA_SRECV}" ; }
+
+[ $CRIT = "true" ] && { echo "Connection Critical - $(Message) | $(PerformanceData)" ; exit 2 ; }
+[ $WARN = "true" ] && { echo "Connection Warning - $(Message) | $(PerformanceData)"  ; exit 1 ; }
+echo "Connection OK - $(Message) | $(PerformanceData)"  ; exit 0
