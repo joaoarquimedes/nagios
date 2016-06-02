@@ -15,7 +15,7 @@
 
 # Binários a serem verificados antes de dar continuidade no restante da execução do script.
 PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
-[ -f "$(which postqueue)" ] || { echo "Program not found: postqueue"; exit 3 ; }
+[[ -f $(which postqueue) ]] || { echo "Program not found: postqueue"; exit 3 ; }
 
 MENSAGEM_USO=" 
 Uso: $(basename "$0") [OPÇÕES]

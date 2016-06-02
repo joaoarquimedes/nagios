@@ -14,7 +14,7 @@
 # UNKNOWN=3
 
 # Binários a serem verificados antes de dar continuidade no restante da execução do script.
-[ -f "$(which ss)" ] || { echo "Program not found: ss"; exit 3 ; }
+[[ -f $(which ss) ]] || { echo "Program not found: ss"; exit 3 ; }
 
 MENSAGEM_USO=" 
 Uso: $(basename "$0") [OPÇÕES]
