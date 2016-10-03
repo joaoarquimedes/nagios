@@ -51,7 +51,7 @@ ALERT_CRITICAL=false
 ALERT_WARNING=false
 
 GET_ERROR()              { grep " ERROR " $LOGPATH | wc -l ; }
-GET_WARNING()            { grep " WARN " $LOGPATH | wc -l ; }
+GET_WARNING()            { egrep " (WARN|WARNING) " $LOGPATH | wc -l ; }
 GET_INFO()               { grep " INFO " $LOGPATH | wc -l ; }
 GET_GRAVE()              { grep "GRAVE\:" $LOGPATH | wc -l ; }
 GET_DEPLOYING()          { grep "\: Deploying " $LOGPATH | wc -l ; }
