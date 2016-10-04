@@ -54,11 +54,11 @@ GET_ERROR()              { grep " ERROR " $LOGPATH | wc -l ; }
 GET_WARNING()            { egrep " (WARN|WARNING) " $LOGPATH | wc -l ; }
 GET_INFO()               { grep " INFO " $LOGPATH | wc -l ; }
 GET_GRAVE()              { grep "GRAVE\:" $LOGPATH | wc -l ; }
-GET_DEPLOYING()          { grep "\: Deploying " $LOGPATH | wc -l ; }
-GET_DEPLOYING_ERROR()    { grep "\: Error deploying " $LOGPATH | wc -l ; }
+GET_DEPLOYING()          { grep " Deploying web application " $LOGPATH | wc -l ; }
+GET_DEPLOYING_ERROR()    { grep " Error deploying " $LOGPATH | wc -l ; }
 GET_APP_STARTUP_FAILED() { grep " Application startup failed" $LOGPATH | wc -l; }
-GET_SERVER_STARTUP()     { grep "\: Server startup in " $LOGPATH | wc -l ; }
-GET_SERVER_STOP()        { grep "AbstractProtocol stop" $LOGPATH | uniq | wc -l ; }
+GET_SERVER_STARTUP()     { grep " Server startup in " $LOGPATH | wc -l ; }
+GET_SERVER_STOP()        { grep "AbstractProtocol.stop" $LOGPATH | uniq | wc -l ; }
 GET_SIZE()               { stat --printf="%s" $LOGPATH ; }
 
 # Converter o tamanho do log em Byte, Kilo Byte, Mega Byte ou Giga Byte.
